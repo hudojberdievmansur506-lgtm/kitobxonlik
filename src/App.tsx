@@ -48,18 +48,81 @@ export default function App() {
       }
 
       if (Array.isArray(booksData)) {
+        console.log("DEBUG: booksData from backend:", booksData);
+        console.log("DEBUG: questionsData from backend:", questionsData);
+        console.log("DEBUG: resultsData from backend:", resultsData);
+
         const mappedBooks: LiteratureBook[] = booksData.map((item: any) => {
           // Find questions belongs to this book from the backend pool
           const bookQuestionsRaw = Array.isArray(questionsData) 
             ? questionsData.filter((q: any) => String(q.book_id || q.bookId) === String(item.id))
             : [];
 
-          const formattedQuestions: Question[] = bookQuestionsRaw.map((q: any) => ({
-            id: q.id || q._id || String(Math.random()),
-            savol: q.savol || '',
-            togriJavob: q.togri_javob || q.togriJavob || '',
-            javoblar: q.variantlar || q.javoblar || []
-          }));
+          const formattedQuestions: Question[] = bookQuestionsRaw.map((q: any) => {
+            const optionsRaw = q.variantlar || q.javoblar || q.options || q.choices;
+            let optionsMatched: string[] = [];
+
+            if (Array.isArray(optionsRaw)) {
+              optionsMatched = optionsRaw.map((o: any) => (typeof o === 'object' && o !== null) ? (o.text || o.option || String(o)) : String(o));
+            } else if (typeof optionsRaw === 'string') {
+              try {
+                const parsed = JSON.parse(optionsRaw.trim());
+                if (Array.isArray(parsed)) {
+                  optionsMatched = parsed.map((o: any) => String(o));
+                } else if (typeof parsed === 'object' && parsed !== null) {
+                  optionsMatched = Object.values(parsed).map((o: any) => String(o));
+                } else {
+                  optionsMatched = [optionsRaw];
+                }
+              } catch {
+                if (optionsRaw.includes('","') || optionsRaw.includes('\",\"')) {
+                  try {
+                    const cleanStr = optionsRaw.replace(/^[\["'\s\\]+|[\]"'\s\\]+$/g, '');
+                    optionsMatched = cleanStr.split(/\\?["']?\s*,\s*\\?["']?/).map((x: string) => x.trim()).filter(Boolean);
+                  } catch {
+                    optionsMatched = [optionsRaw];
+                  }
+                } else if (optionsRaw.includes(',')) {
+                  optionsMatched = optionsRaw.split(',').map((x: string) => x.trim()).filter(Boolean);
+                } else if (optionsRaw.includes('\n')) {
+                  optionsMatched = optionsRaw.split('\n').map((x: string) => x.trim()).filter(Boolean);
+                } else {
+                  optionsMatched = [optionsRaw];
+                }
+              }
+            } else if (typeof optionsRaw === 'object' && optionsRaw !== null) {
+              optionsMatched = Object.values(optionsRaw).map((o: any) => String(o));
+            }
+
+            // Ensure unique options
+            optionsMatched = Array.from(new Set(optionsMatched));
+
+            // Clean options and remove eventual wrapping quotes
+            optionsMatched = optionsMatched.map(v => {
+              if (typeof v === 'string') {
+                return v.replace(/^["']|["']$/g, '').trim();
+              }
+              return v;
+            });
+
+            // Get the correct answer
+            let tg = q.togri_javob || q.togriJavob || q.correct_answer || '';
+            if (typeof tg === 'string') {
+              tg = tg.replace(/^["']|["']$/g, '').trim();
+            }
+
+            // Ensure correct answer is included in the options list
+            if (tg && !optionsMatched.includes(tg)) {
+              optionsMatched.push(tg);
+            }
+
+            return {
+              id: String(q.id || q._id || Math.random()),
+              savol: q.savol || q.question || '',
+              togriJavob: tg,
+              javoblar: optionsMatched
+            };
+          });
 
           // Fallback to default questions if none exist on the backend yet
           let finalQuestions = formattedQuestions;
