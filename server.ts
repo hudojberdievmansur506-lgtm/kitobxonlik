@@ -6,17 +6,23 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Backend CORS Proxy for Books API (Server-side fetch prevents CORS block)
+  // Backend CORS Proxy for Books API with a fast 3.5-second timeout to prevent hanging responses
   app.get("/api/books-proxy", async (req, res) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
     try {
       const targetUrl = "https://king-dork-opulently.ngrok-free.dev/api/books";
       const response = await fetch(targetUrl, {
         method: "GET",
+        signal: controller.signal,
         headers: {
           "ngrok-skip-browser-warning": "true",
           "Content-Type": "application/json"
         }
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Backend ngrok API response error: ${response.status}`);
@@ -25,10 +31,12 @@ async function startServer() {
       const data = await response.json();
       res.json(data);
     } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error("CORS Proxy error fetching from ngrok:", err);
+      const isTimeout = err.name === "AbortError";
       res.status(500).json({ 
-        error: "Backend API bilan ulanib bo‘lmadi", 
-        details: err.message || String(err) 
+        error: isTimeout ? "API so‘rovi vaqti tugadi (Timeout)" : "Backend API bilan ulanib bo‘lmadi", 
+        details: isTimeout ? "Masofaviy server 3.5 soniya ichida javob bermadi" : (err.message || String(err)) 
       });
     }
   });

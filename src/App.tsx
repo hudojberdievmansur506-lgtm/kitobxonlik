@@ -32,8 +32,22 @@ export default function App() {
       })
       .then((data: any[]) => {
         if (Array.isArray(data)) {
+          // Mahalliy saqlangan kitoblar ro‘yxatini olish (foydalanuvchi kiritgan yangi kitoblar va tahrirlarni saqlash uchun)
+          let savedBooksList: LiteratureBook[] = [];
+          const savedBooksStr = localStorage.getItem('kitobxonlik_books');
+          if (savedBooksStr) {
+            try {
+              savedBooksList = JSON.parse(savedBooksStr);
+            } catch (e) {
+              savedBooksList = [];
+            }
+          }
+
           const mappedBooks: LiteratureBook[] = data.map((item: any) => {
-            // Check if there is a matching default book to retain quiz questions if they are omitted by API
+            // 1. Mahalliy saqlangan tahrirlangan kitobni izlash (biriktirilgan savollar uchun)
+            const matchingLocal = savedBooksList.find((lb) => lb.id === item.id);
+
+            // 2. Default kitoblar orasidan mosini izlash (savollarni saqlab qolish uchun)
             const matchingDefault = DEFAULT_BOOKS.find((db) => {
               if (db.id === item.id) return true;
               const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9а-яўқғҳ]/g, '');
@@ -45,14 +59,26 @@ export default function App() {
               if (normItem.includes('dunyo') && normDB.includes('dunyo')) return true;
               return false;
             });
+
             return {
               id: item.id || '',
               nom: item.nom || '',
               yaratilganVaqt: item.yaratilgan_vaqt || item.yaratilganVaqt || new Date().toISOString(),
-              savollar: item.savollar || matchingDefault?.savollar || []
+              savollar: matchingLocal?.savollar && matchingLocal.savollar.length > 0 
+                ? matchingLocal.savollar 
+                : (item.savollar || matchingDefault?.savollar || [])
             };
           });
-          setBooks(mappedBooks);
+
+          // API-dan kelmagan, lekin admin paneldan qo‘shilgan yangi maxsus kitoblarni saqlab qolish
+          const customBooks = savedBooksList.filter(
+            (lb) => !mappedBooks.some((mb) => mb.id === lb.id)
+          );
+
+          const finalBooks = [...mappedBooks, ...customBooks];
+          setBooks(finalBooks);
+          // O‘zaro sinxronizatsiya qilish
+          localStorage.setItem('kitobxonlik_books', JSON.stringify(finalBooks));
           setApiStatus('success');
         } else {
           throw new Error('Fetched data is not an array');
