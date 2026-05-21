@@ -21,11 +21,13 @@ import {
 
 interface StudentFormProps {
   books: LiteratureBook[];
+  apiStatus?: 'loading' | 'success' | 'error';
+  apiError?: string | null;
   onStartQuiz: (registration: StudentRegistration) => void;
   onOpenAdmin: () => void;
 }
 
-export default function StudentForm({ books, onStartQuiz, onOpenAdmin }: StudentFormProps) {
+export default function StudentForm({ books, apiStatus = 'loading', apiError, onStartQuiz, onOpenAdmin }: StudentFormProps) {
   const [familiyaIsm, setFamiliyaIsm] = useState('');
   const [kurs, setKurs] = useState<CourseType>('1-kurs');
   const [daraja, setDaraja] = useState<EducationLevelType>('Bakalavriat');
@@ -61,9 +63,12 @@ export default function StudentForm({ books, onStartQuiz, onOpenAdmin }: Student
 
   const activeDirections = daraja === 'Bakalavriat' ? BAKALAVRIAT_DIRECTIONS : MAGISTRATURA_DIRECTIONS;
 
+  const booksWithQuestions = books.filter(b => b.savollar && b.savollar.length > 0);
+  const minRequired = booksWithQuestions.length > 0 ? Math.min(10, booksWithQuestions.length) : 0;
+
   const isValid = 
     familiyaIsm.trim().length >= 3 && 
-    selectedBooks.length >= 10 && 
+    selectedBooks.length >= minRequired && 
     talimYonalishi !== '';
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -101,6 +106,59 @@ export default function StudentForm({ books, onStartQuiz, onOpenAdmin }: Student
           <Settings className="w-4 h-4 text-gray-500" />
           ADMIN PANEL
         </button>
+      </div>
+
+      {/* Backend API status banners */}
+      <div className="mb-6">
+        {apiStatus === 'loading' && (
+          <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 animate-pulse">
+            <div className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+            <div className="text-xs font-medium">
+              Backend API-ga ulanish tekshirilmoqda ({books.length} ta kitob tayyor)...
+            </div>
+          </div>
+        )}
+
+        {apiStatus === 'success' && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 space-y-1">
+            <div className="flex items-center gap-2 text-xs font-bold font-sans">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Backend API-ga muvaffaqiyatli bog‘landi!
+            </div>
+            <p className="text-[11px] text-emerald-600">
+              Kitoblar ro‘yxati mahalliy ngrok API manzilingizdan real-vaqtda yuklandi. O‘yin faqat bazadagi {books.length} ta kitob testi bilan cheklanadi.
+            </p>
+          </div>
+        )}
+
+        {apiStatus === 'error' && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                Backend API bilan ulanish amalga oshmadi (Tizim oflayn rejimda)
+              </div>
+              <span className="text-[10px] bg-amber-200 px-2 py-0.5 rounded-full font-mono font-semibold">
+                Oflayn (Default)
+              </span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-amber-700">
+              Siz ko‘rsatgan <code className="font-mono bg-amber-100/70 px-1 py-0.5 rounded text-[10px] font-bold">https://king-dork-opulently.ngrok-free.dev/api/books</code> manziliga so‘rov yuborilganda xatolik yuz berdi ({apiError || 'CORS yoki Tarmoq muammosi'}).
+              Tizim oflayn rejimda barcha default kitoblar ({books.length} ta) bilan faoliyatini davom ettiraveradi.
+            </p>
+            <div className="pt-1.5 border-t border-amber-200/50 text-[10px] text-amber-600 space-y-1">
+              <p className="font-semibold text-amber-800 font-mono">Buni tuzatish uchun nima qilish kerak?</p>
+              <ul className="list-disc list-inside space-y-0.5 mt-0.5 pl-1">
+                <li>Mahalliy backend API serveringiz (Node.js/Express) ishlayotganiga ishonch hosil qiling (<code className="font-mono bg-amber-100/50 px-1 rounded">localhost:5000</code>).</li>
+                <li>Express backend kodingizda <strong>CORS</strong> yoqilganligini tekshiring (masalan: <code className="font-mono bg-amber-100/50 px-1 rounded">app.use(cors())</code> o‘rnatilgan va import qilingan bo‘lishi yoki headersda <code className="font-mono bg-amber-100/50 px-1">Access-Control-Allow-Origin: *</code> bo‘lishi shart).</li>
+                <li>ngrok tunnellari o‘chib qolmaganini va ngrok manzilingiz to‘g‘ri yozilganini ta’kidlang.</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -234,7 +292,7 @@ export default function StudentForm({ books, onStartQuiz, onOpenAdmin }: Student
           </div>
 
           <p className="text-xs text-gray-400 mb-2 shrink-0">
-            Test topshirish uchun quyidagi kitoblardan kamida <strong className="text-gray-900">10 ta</strong> kitob tanlashingiz shart.
+            Test topshirish uchun quyidagi kitoblardan kamida <strong className="text-gray-900">{minRequired} ta</strong> kitob tanlashingiz shart.
           </p>
 
           {/* List scrollbox */}
@@ -296,18 +354,18 @@ export default function StudentForm({ books, onStartQuiz, onOpenAdmin }: Student
                 Tanlangan kitoblar:
               </span>
               <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${
-                selectedBooks.length >= 10 
+                selectedBooks.length >= minRequired 
                   ? 'bg-emerald-100 text-emerald-800' 
                   : 'bg-amber-100 text-amber-800'
               }`}>
-                {selectedBooks.length} / 10
+                {selectedBooks.length} / {minRequired}
               </span>
             </div>
 
-            {isSubmitTouched && selectedBooks.length < 10 && (
+            {isSubmitTouched && selectedBooks.length < minRequired && (
               <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg flex items-center gap-2 border border-red-200">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-                <span>Iltimos, eng kamida 10 ta kitob tanlang (hozir {selectedBooks.length} ta tanlandi).</span>
+                <span>Iltimos, eng kamida {minRequired} ta kitob tanlang (hozir {selectedBooks.length} ta tanlandi).</span>
               </div>
             )}
 

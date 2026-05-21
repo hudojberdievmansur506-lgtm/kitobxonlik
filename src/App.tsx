@@ -16,19 +16,17 @@ export default function App() {
   const [settings, setSettings] = useState<QuizSettings>(DEFAULT_SETTINGS);
   const [currentScreen, setCurrentScreen] = useState<'registration' | 'quiz' | 'admin'>('registration');
   const [registration, setRegistration] = useState<StudentRegistration | null>(null);
+  const [apiStatus, setApiStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Load configuration from local storage on mount, and books from the backend API
   useEffect(() => {
-    // 1. Fetch books list from backend API
-    fetch("https://king-dork-opulently.ngrok-free.dev/api/books", {
-      headers: {
-        "ngrok-skip-browser-warning": "true",
-        "Content-Type": "application/json"
-      }
-    })
+    setApiStatus('loading');
+    // 1. Fetch books list from backend API via secure local proxy to completely avoid CORS issues
+    fetch("/api/books-proxy")
       .then((res) => {
         if (!res.ok) {
-          throw new Error('API server returned error status');
+          throw new Error('API server returned error status ' + res.status);
         }
         return res.json();
       })
@@ -36,7 +34,17 @@ export default function App() {
         if (Array.isArray(data)) {
           const mappedBooks: LiteratureBook[] = data.map((item: any) => {
             // Check if there is a matching default book to retain quiz questions if they are omitted by API
-            const matchingDefault = DEFAULT_BOOKS.find((db) => db.id === item.id);
+            const matchingDefault = DEFAULT_BOOKS.find((db) => {
+              if (db.id === item.id) return true;
+              const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9а-яўқғҳ]/g, '');
+              const normDB = normalize(db.nom);
+              const normItem = normalize(item.nom || '');
+              if (normDB.includes(normItem) || normItem.includes(normDB)) return true;
+              if (normItem.includes('sariq') && normDB.includes('sariq')) return true;
+              if (normItem.includes('ufq') && normDB.includes('ufq')) return true;
+              if (normItem.includes('dunyo') && normDB.includes('dunyo')) return true;
+              return false;
+            });
             return {
               id: item.id || '',
               nom: item.nom || '',
@@ -45,12 +53,15 @@ export default function App() {
             };
           });
           setBooks(mappedBooks);
+          setApiStatus('success');
         } else {
           throw new Error('Fetched data is not an array');
         }
       })
       .catch((err) => {
         console.warn('Backend API books fetch failed, using local/default books as fallback:', err);
+        setApiStatus('error');
+        setApiError(err instanceof Error ? err.message : String(err));
         const savedBooks = localStorage.getItem('kitobxonlik_books');
         if (savedBooks) {
           try {
@@ -139,6 +150,8 @@ export default function App() {
         <main className="animate-fade-in-up">
           <StudentForm 
             books={books} 
+            apiStatus={apiStatus}
+            apiError={apiError}
             onStartQuiz={handleStartQuiz} 
             onOpenAdmin={() => setCurrentScreen('admin')} 
           />
