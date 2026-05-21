@@ -32,6 +32,7 @@ interface AdminPanelProps {
   onClearResults: () => void;
   onDeleteBook: (id: string) => void;
   onAddBook: (nom: string) => void;
+  onAddQuestions: (bookId: string, questions: Question[]) => Promise<void>;
 }
 
 export default function AdminPanel({ 
@@ -43,7 +44,8 @@ export default function AdminPanel({
   onUpdateSettings,
   onClearResults,
   onDeleteBook,
-  onAddBook
+  onAddBook,
+  onAddQuestions
 }: AdminPanelProps) {
   // Simple password lock
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
@@ -72,6 +74,7 @@ export default function AdminPanel({
   const [manualText, setManualText] = useState('');
   const [parsedPreviewQuestions, setParsedPreviewQuestions] = useState<Question[]>([]);
   const [parseError, setParseError] = useState('');
+  const [isSavingQuestions, setIsSavingQuestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Results screen filters
@@ -136,27 +139,24 @@ export default function AdminPanel({
     }
   };
 
-  const handleSaveQuestions = () => {
+  const handleSaveQuestions = async () => {
     if (!selectedBookForQuestions) return;
 
-    const updated = books.map(b => {
-      if (b.id === selectedBookForQuestions.id) {
-        return {
-          ...b,
-          savollar: parsedPreviewQuestions
-        };
-      }
-      return b;
-    });
-
-    onUpdateBooks(updated);
-    
-    // reset attach states
-    setSelectedBookForQuestions(null);
-    setParsedPreviewQuestions([]);
-    setManualText('');
-    setParseError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    try {
+      setIsSavingQuestions(true);
+      await onAddQuestions(selectedBookForQuestions.id, parsedPreviewQuestions);
+      
+      // reset attach states
+      setSelectedBookForQuestions(null);
+      setParsedPreviewQuestions([]);
+      setManualText('');
+      setParseError('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err: any) {
+      alert("Savollarni saqlashda xatolik: " + (err.message || String(err)));
+    } finally {
+      setIsSavingQuestions(false);
+    }
   };
 
   // Filter and sort core logic for historic results
@@ -900,15 +900,15 @@ export default function AdminPanel({
               </button>
               <button
                 id="btn-attach-save"
-                disabled={parsedPreviewQuestions.length === 0}
+                disabled={parsedPreviewQuestions.length === 0 || isSavingQuestions}
                 onClick={handleSaveQuestions}
                 className={`px-5 py-2.5 rounded-lg text-xs font-bold text-white shadow-2xs cursor-pointer ${
-                  parsedPreviewQuestions.length === 0
+                  parsedPreviewQuestions.length === 0 || isSavingQuestions
                     ? 'bg-gray-300 cursor-not-allowed'
                     : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
-                Testlarni tizimga biriktirish
+                {isSavingQuestions ? 'Tizimga saqlanmoqda...' : 'Testlarni tizimga biriktirish'}
               </button>
             </div>
           </div>
