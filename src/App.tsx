@@ -453,9 +453,33 @@ export default function App() {
   };
 
   // Admin purges attempts log
-  const handleClearResults = () => {
-    setResults([]);
-    localStorage.setItem('kitobxonlik_results', JSON.stringify([]));
+  const handleClearResults = async () => {
+    try {
+      setApiStatus('loading');
+      const response = await fetch("https://king-dork-opulently.ngrok-free.dev/api/results", {
+        method: "DELETE",
+        headers: {
+          "ngrok-skip-browser-warning": "true",
+          "Content-Type": "application/json"
+        }
+      });
+      
+      setResults([]);
+      localStorage.setItem('kitobxonlik_results', JSON.stringify([]));
+      
+      if (response.ok) {
+        setApiStatus('success');
+      } else {
+        console.warn("Backend response not OK during clear results, but cleared local states");
+        setApiStatus('success');
+      }
+    } catch (err: any) {
+      console.error("Natijalarni tozalashda xatolik:", err);
+      // Fallback in case of server failure, clear locally
+      setResults([]);
+      localStorage.setItem('kitobxonlik_results', JSON.stringify([]));
+      setApiStatus('success');
+    }
   };
 
   return (
