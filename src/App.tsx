@@ -28,9 +28,9 @@ export default function App() {
       };
 
       const [booksRes, questionsRes, resultsRes] = await Promise.all([
-        fetch("/api/books-proxy", { headers: headersObj }),
-        fetch("/api/questions-proxy", { headers: headersObj }),
-        fetch("/api/results-proxy", { headers: headersObj })
+        fetch("https://king-dork-opulently.ngrok-free.dev/api/books", { headers: headersObj }),
+        fetch("https://king-dork-opulently.ngrok-free.dev/api/questions", { headers: headersObj }),
+        fetch("https://king-dork-opulently.ngrok-free.dev/api/results", { headers: headersObj })
       ]);
 
       if (!booksRes.ok) {
@@ -310,7 +310,7 @@ export default function App() {
   const handleAddNewBook = async (nom: string) => {
     try {
       setApiStatus('loading');
-      const response = await fetch("/api/books-proxy", {
+      const response = await fetch("https://king-dork-opulently.ngrok-free.dev/api/books", {
         method: "POST",
         headers: {
           "ngrok-skip-browser-warning": "true",
@@ -335,7 +335,7 @@ export default function App() {
   const handleDeleteBook = async (id: string) => {
     try {
       setApiStatus('loading');
-      const response = await fetch(`/api/books-proxy/${id}`, {
+      const response = await fetch(`https://king-dork-opulently.ngrok-free.dev/api/books/${id}`, {
         method: "DELETE",
         headers: {
           "ngrok-skip-browser-warning": "true",
@@ -372,7 +372,7 @@ export default function App() {
           variantlar: q.javoblar
         };
 
-        const response = await fetch("/api/questions-proxy", {
+        const response = await fetch("https://king-dork-opulently.ngrok-free.dev/api/questions", {
           method: "POST",
           headers: headersObj,
           body: JSON.stringify(payload)
@@ -425,7 +425,7 @@ export default function App() {
         book_ids: result.tanlanganKitoblar.join(", ")
       };
 
-      const res = await fetch("/api/results-proxy", {
+      const res = await fetch("https://king-dork-opulently.ngrok-free.dev/api/results", {
         method: "POST",
         headers: headersObj,
         body: JSON.stringify(payload)

@@ -152,15 +152,6 @@ async function startServer() {
       }
 
       const data = await response.json();
-
-      // Write a sample of the returned questions data to a debug file
-      try {
-        const fs = require('fs');
-        fs.writeFileSync('debug_questions.json', JSON.stringify(data.slice(0, 10), null, 2));
-      } catch (e) {
-        console.error("Failed to write debug file", e);
-      }
-
       res.json(data);
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -333,23 +324,6 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
-    
-    // Test fetch on boot to inspect data
-    fetch("https://king-dork-opulently.ngrok-free.dev/api/questions", {
-      headers: {
-        "ngrok-skip-browser-warning": "true",
-        "Content-Type": "application/json"
-      }
-    })
-    .then(r => r.json())
-    .then(data => {
-      const fs = require('fs');
-      fs.writeFileSync('debug_questions.json', JSON.stringify(data.slice(0, 10), null, 2));
-      console.log("Successfully wrote bootstrap preview to debug_questions.json");
-    })
-    .catch(err => {
-      console.error("Startup test fetch error:", err);
-    });
   });
 }
 
