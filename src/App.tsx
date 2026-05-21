@@ -59,68 +59,133 @@ export default function App() {
             : [];
 
           const formattedQuestions: Question[] = bookQuestionsRaw.map((q: any) => {
-            const optionsRaw = q.variantlar || q.javoblar || q.options || q.choices;
+            // Get the correct answer
+            let tg = q.togri_javob || q.togriJavob || q.correct_answer || q.correct || q.javob || '';
+            if (typeof tg === 'string') {
+              tg = tg.replace(/^["']|["']$/g, '').trim();
+            }
+
+            // Detect matching options from various potential property names returned from backend
+            const optionsRaw = q.variantlar || q.javoblar || q.options || q.choices || q.variants || q.answers;
             let optionsMatched: string[] = [];
 
-            if (Array.isArray(optionsRaw)) {
-              optionsMatched = optionsRaw.map((o: any) => (typeof o === 'object' && o !== null) ? (o.text || o.option || String(o)) : String(o));
+            // 1. Check if individual properties like variant_a / variant1 / a, b, c, d exist
+            const individualKeys = [
+              q.variant_a, q.variant_b, q.variant_c, q.variant_d,
+              q.variantA, q.variantB, q.variantC, q.variantD,
+              q.variant_1, q.variant_2, q.variant_3, q.variant_4,
+              q.variant1, q.variant2, q.variant3, q.variant4,
+              q.a, q.b, q.c, q.d
+            ].filter(v => typeof v === 'string' && v.trim() !== '');
+
+            if (individualKeys.length >= 2) {
+              optionsMatched = individualKeys.map(v => String(v).replace(/^["']|["']$/g, '').trim());
+            } else if (Array.isArray(optionsRaw)) {
+              optionsMatched = optionsRaw.map((o: any) => {
+                if (typeof o === 'object' && o !== null) {
+                  return String(o.text || o.option || o.choice || Object.values(o)[0] || '');
+                }
+                return String(o);
+              });
             } else if (typeof optionsRaw === 'string') {
-              try {
-                const parsed = JSON.parse(optionsRaw.trim());
-                if (Array.isArray(parsed)) {
-                  optionsMatched = parsed.map((o: any) => String(o));
-                } else if (typeof parsed === 'object' && parsed !== null) {
-                  optionsMatched = Object.values(parsed).map((o: any) => String(o));
-                } else {
-                  optionsMatched = [optionsRaw];
-                }
-              } catch {
-                if (optionsRaw.includes('","') || optionsRaw.includes('\",\"')) {
-                  try {
-                    const cleanStr = optionsRaw.replace(/^[\["'\s\\]+|[\]"'\s\\]+$/g, '');
-                    optionsMatched = cleanStr.split(/\\?["']?\s*,\s*\\?["']?/).map((x: string) => x.trim()).filter(Boolean);
-                  } catch {
-                    optionsMatched = [optionsRaw];
+              const cleanedStr = optionsRaw.trim();
+              if (cleanedStr.startsWith('[') || cleanedStr.includes(',') || cleanedStr.includes('"') || cleanedStr.includes("'")) {
+                const cleanedBrackets = cleanedStr.replace(/^\[|\]$/g, '').trim();
+                const matchedQuotes: string[] = [];
+                const regex = /(["'])(?:(?=(\\?))\2.)*?\1/g;
+                let match;
+                while ((match = regex.exec(cleanedStr)) !== null) {
+                  let item = match[0].slice(1, -1);
+                  item = item.replace(/\\"/g, '"').replace(/\\'/g, "'").trim();
+                  if (item) {
+                    matchedQuotes.push(item);
                   }
-                } else if (optionsRaw.includes(',')) {
-                  optionsMatched = optionsRaw.split(',').map((x: string) => x.trim()).filter(Boolean);
-                } else if (optionsRaw.includes('\n')) {
-                  optionsMatched = optionsRaw.split('\n').map((x: string) => x.trim()).filter(Boolean);
-                } else {
-                  optionsMatched = [optionsRaw];
                 }
+
+                if (matchedQuotes.length >= 2) {
+                  optionsMatched = matchedQuotes;
+                } else if (cleanedBrackets.includes('","') || cleanedBrackets.includes("','")) {
+                  const delimiter = cleanedBrackets.includes('","') ? '","' : "','";
+                  optionsMatched = cleanedBrackets.split(delimiter).map(x => x.replace(/^["']|["']$/g, '').trim()).filter(Boolean);
+                } else if (cleanedBrackets.includes(',')) {
+                  optionsMatched = cleanedBrackets.split(',').map(x => x.replace(/^["']|["']$/g, '').trim()).filter(Boolean);
+                } else if (cleanedBrackets.includes('\n')) {
+                  optionsMatched = cleanedBrackets.split('\n').map(x => x.replace(/^["']|["']$/g, '').trim()).filter(Boolean);
+                } else {
+                  optionsMatched = [cleanedStr];
+                }
+              } else {
+                optionsMatched = [cleanedStr];
               }
             } else if (typeof optionsRaw === 'object' && optionsRaw !== null) {
               optionsMatched = Object.values(optionsRaw).map((o: any) => String(o));
             }
 
-            // Ensure unique options
-            optionsMatched = Array.from(new Set(optionsMatched));
-
-            // Clean options and remove eventual wrapping quotes
-            optionsMatched = optionsMatched.map(v => {
-              if (typeof v === 'string') {
-                return v.replace(/^["']|["']$/g, '').trim();
-              }
-              return v;
-            });
-
-            // Get the correct answer
-            let tg = q.togri_javob || q.togriJavob || q.correct_answer || '';
-            if (typeof tg === 'string') {
-              tg = tg.replace(/^["']|["']$/g, '').trim();
-            }
+            // Ensure unique options, clean up empty items
+            optionsMatched = Array.from(new Set(optionsMatched.map(v => typeof v === 'string' ? v.trim() : String(v)))).filter(Boolean);
 
             // Ensure correct answer is included in the options list
             if (tg && !optionsMatched.includes(tg)) {
               optionsMatched.push(tg);
             }
 
+            // Build full set of options
+            let finalFour: string[] = [];
+            if (optionsMatched.includes(tg)) {
+              finalFour.push(tg);
+              const remaining = optionsMatched.filter(o => o !== tg);
+              finalFour.push(...remaining);
+            } else {
+              if (tg) finalFour.push(tg);
+              finalFour.push(...optionsMatched);
+            }
+
+            // De-duplicate finalFour list
+            finalFour = Array.from(new Set(finalFour)).filter(Boolean);
+
+            // Fill up to exactly 4 options if it has fewer
+            if (finalFour.length < 4) {
+              const siblingsCorrectAnswers = bookQuestionsRaw
+                .map((sib: any) => sib.togri_javob || sib.togriJavob || sib.correct_answer || '')
+                .map((ans: string) => typeof ans === 'string' ? ans.replace(/^["']|["']$/g, '').trim() : '')
+                .filter((ans: string) => ans !== '' && ans !== tg && !finalFour.includes(ans));
+              
+              for (const sibAns of siblingsCorrectAnswers) {
+                if (finalFour.length >= 4) break;
+                finalFour.push(sibAns);
+              }
+
+              const backupPool = [
+                "Javob topilmadi",
+                "Noto‘g‘ri variant",
+                "Ma‘lumot berilmagan",
+                "Hech biri",
+                "To‘g‘ri javob mavjud emas"
+              ];
+              for (const bkp of backupPool) {
+                if (finalFour.length >= 4) break;
+                if (!finalFour.includes(bkp) && bkp !== tg) {
+                  finalFour.push(bkp);
+                }
+              }
+            }
+
+            // Truncate to exactly 4 options as requested: "4 ta variant chiqsin"
+            if (finalFour.length > 4) {
+              const correctIdx = finalFour.indexOf(tg);
+              if (correctIdx !== -1) {
+                const nonCorrect = finalFour.filter(o => o !== tg);
+                finalFour = [tg, ...nonCorrect.slice(0, 3)];
+              } else {
+                finalFour = finalFour.slice(0, 4);
+              }
+            }
+
             return {
               id: String(q.id || q._id || Math.random()),
               savol: q.savol || q.question || '',
               togriJavob: tg,
-              javoblar: optionsMatched
+              javoblar: finalFour
             };
           });
 
