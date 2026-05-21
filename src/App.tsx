@@ -20,10 +20,10 @@ export default function App() {
   // Load configuration from local storage on mount, and books from the backend API
   useEffect(() => {
     // 1. Fetch books list from backend API
-    fetch('https://king-dork-opulently.ngrok-free.dev/api/books', {
+    fetch("https://king-dork-opulently.ngrok-free.dev/api/books", {
       headers: {
-        'ngrok-skip-browser-warning': 'true',
-        'Content-Type': 'application/json'
+        "ngrok-skip-browser-warning": "true",
+        "Content-Type": "application/json"
       }
     })
       .then((res) => {
