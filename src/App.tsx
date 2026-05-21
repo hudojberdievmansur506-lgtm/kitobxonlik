@@ -66,14 +66,8 @@ export default function App() {
           };
         });
 
-        // API-dan kelmagan, lekin admin paneldan qo‘shilgan yangi maxsus kitoblarni saqlab qolish
-        const customBooks = savedBooksList.filter(
-          (lb) => !mappedBooks.some((mb) => mb.id === lb.id)
-        );
-
-        const finalBooks = [...mappedBooks, ...customBooks];
-        setBooks(finalBooks);
-        localStorage.setItem('kitobxonlik_books', JSON.stringify(finalBooks));
+        setBooks(mappedBooks);
+        localStorage.setItem('kitobxonlik_books', JSON.stringify(mappedBooks));
         setApiStatus('success');
         setApiError(null);
       } else {
