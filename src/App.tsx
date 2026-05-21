@@ -17,23 +17,51 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'registration' | 'quiz' | 'admin'>('registration');
   const [registration, setRegistration] = useState<StudentRegistration | null>(null);
 
-  // Load configuration from local storage on mount
+  // Load configuration from local storage on mount, and books from the backend API
   useEffect(() => {
-    const savedBooks = localStorage.getItem('kitobxonlik_books');
+    // 1. Fetch books list from backend API
+    fetch('https://king-dork-opulently.ngrok-free.dev/api/books')
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('API server returned error status');
+        }
+        return res.json();
+      })
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          const mappedBooks: LiteratureBook[] = data.map((item: any) => {
+            // Check if there is a matching default book to retain quiz questions if they are omitted by API
+            const matchingDefault = DEFAULT_BOOKS.find((db) => db.id === item.id);
+            return {
+              id: item.id || '',
+              nom: item.nom || '',
+              yaratilganVaqt: item.yaratilgan_vaqt || item.yaratilganVaqt || new Date().toISOString(),
+              savollar: item.savollar || matchingDefault?.savollar || []
+            };
+          });
+          setBooks(mappedBooks);
+        } else {
+          throw new Error('Fetched data is not an array');
+        }
+      })
+      .catch((err) => {
+        console.warn('Backend API books fetch failed, using local/default books as fallback:', err);
+        const savedBooks = localStorage.getItem('kitobxonlik_books');
+        if (savedBooks) {
+          try {
+            setBooks(JSON.parse(savedBooks));
+          } catch (e) {
+            setBooks(DEFAULT_BOOKS);
+          }
+        } else {
+          setBooks(DEFAULT_BOOKS);
+          localStorage.setItem('kitobxonlik_books', JSON.stringify(DEFAULT_BOOKS));
+        }
+      });
+
+    // 2. Load other configurations from local storage
     const savedResults = localStorage.getItem('kitobxonlik_results');
     const savedSettings = localStorage.getItem('kitobxonlik_settings');
-
-    if (savedBooks) {
-      try {
-        setBooks(JSON.parse(savedBooks));
-      } catch (e) {
-        setBooks(DEFAULT_BOOKS);
-      }
-    } else {
-      // Initialize with great default literature list
-      setBooks(DEFAULT_BOOKS);
-      localStorage.setItem('kitobxonlik_books', JSON.stringify(DEFAULT_BOOKS));
-    }
 
     if (savedResults) {
       try {
