@@ -19,87 +19,87 @@ export default function App() {
   const [apiStatus, setApiStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Load configuration from local storage on mount, and books from the backend API
-  useEffect(() => {
+  const fetchBooks = async () => {
     setApiStatus('loading');
-    // 1. Fetch books list from backend API via secure local proxy to completely avoid CORS issues
-    fetch("/api/books-proxy")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('API server returned error status ' + res.status);
-        }
-        return res.json();
-      })
-      .then((data: any[]) => {
-        if (Array.isArray(data)) {
-          // Mahalliy saqlangan kitoblar ro‘yxatini olish (foydalanuvchi kiritgan yangi kitoblar va tahrirlarni saqlash uchun)
-          let savedBooksList: LiteratureBook[] = [];
-          const savedBooksStr = localStorage.getItem('kitobxonlik_books');
-          if (savedBooksStr) {
-            try {
-              savedBooksList = JSON.parse(savedBooksStr);
-            } catch (e) {
-              savedBooksList = [];
-            }
+    try {
+      const res = await fetch("/api/books-proxy");
+      if (!res.ok) {
+        throw new Error('API server returned error status ' + res.status);
+      }
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        // Mahalliy saqlangan kitoblar ro‘yxatini olish (foydalanuvchi kiritgan yangi kitoblar va tahrirlarni saqlash uchun)
+        let savedBooksList: LiteratureBook[] = [];
+        const savedBooksStr = localStorage.getItem('kitobxonlik_books');
+        if (savedBooksStr) {
+          try {
+            savedBooksList = JSON.parse(savedBooksStr);
+          } catch (e) {
+            savedBooksList = [];
           }
+        }
 
-          const mappedBooks: LiteratureBook[] = data.map((item: any) => {
-            // 1. Mahalliy saqlangan tahrirlangan kitobni izlash (biriktirilgan savollar uchun)
-            const matchingLocal = savedBooksList.find((lb) => lb.id === item.id);
+        const mappedBooks: LiteratureBook[] = data.map((item: any) => {
+          // 1. Mahalliy saqlangan tahrirlangan kitobni izlash (biriktirilgan savollar uchun)
+          const matchingLocal = savedBooksList.find((lb) => lb.id === item.id);
 
-            // 2. Default kitoblar orasidan mosini izlash (savollarni saqlab qolish uchun)
-            const matchingDefault = DEFAULT_BOOKS.find((db) => {
-              if (db.id === item.id) return true;
-              const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9а-яўқғҳ]/g, '');
-              const normDB = normalize(db.nom);
-              const normItem = normalize(item.nom || '');
-              if (normDB.includes(normItem) || normItem.includes(normDB)) return true;
-              if (normItem.includes('sariq') && normDB.includes('sariq')) return true;
-              if (normItem.includes('ufq') && normDB.includes('ufq')) return true;
-              if (normItem.includes('dunyo') && normDB.includes('dunyo')) return true;
-              return false;
-            });
-
-            return {
-              id: item.id || '',
-              nom: item.nom || '',
-              yaratilganVaqt: item.yaratilgan_vaqt || item.yaratilganVaqt || new Date().toISOString(),
-              savollar: matchingLocal?.savollar && matchingLocal.savollar.length > 0 
-                ? matchingLocal.savollar 
-                : (item.savollar || matchingDefault?.savollar || [])
-            };
+          // 2. Default kitoblar orasidan mosini izlash (savollarni saqlab qolish uchun)
+          const matchingDefault = DEFAULT_BOOKS.find((db) => {
+            if (db.id === item.id) return true;
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9а-яўқғҳ]/g, '');
+            const normDB = normalize(db.nom);
+            const normItem = normalize(item.nom || '');
+            if (normDB.includes(normItem) || normItem.includes(normDB)) return true;
+            if (normItem.includes('sariq') && normDB.includes('sariq')) return true;
+            if (normItem.includes('ufq') && normDB.includes('ufq')) return true;
+            if (normItem.includes('dunyo') && normDB.includes('dunyo')) return true;
+            return false;
           });
 
-          // API-dan kelmagan, lekin admin paneldan qo‘shilgan yangi maxsus kitoblarni saqlab qolish
-          const customBooks = savedBooksList.filter(
-            (lb) => !mappedBooks.some((mb) => mb.id === lb.id)
-          );
+          return {
+            id: item.id || '',
+            nom: item.nom || '',
+            yaratilganVaqt: item.yaratilgan_vaqt || item.yaratilganVaqt || new Date().toISOString(),
+            savollar: matchingLocal?.savollar && matchingLocal.savollar.length > 0 
+              ? matchingLocal.savollar 
+              : (item.savollar || matchingDefault?.savollar || [])
+          };
+        });
 
-          const finalBooks = [...mappedBooks, ...customBooks];
-          setBooks(finalBooks);
-          // O‘zaro sinxronizatsiya qilish
-          localStorage.setItem('kitobxonlik_books', JSON.stringify(finalBooks));
-          setApiStatus('success');
-        } else {
-          throw new Error('Fetched data is not an array');
-        }
-      })
-      .catch((err) => {
-        console.warn('Backend API books fetch failed, using local/default books as fallback:', err);
-        setApiStatus('error');
-        setApiError(err instanceof Error ? err.message : String(err));
-        const savedBooks = localStorage.getItem('kitobxonlik_books');
-        if (savedBooks) {
-          try {
-            setBooks(JSON.parse(savedBooks));
-          } catch (e) {
-            setBooks(DEFAULT_BOOKS);
-          }
-        } else {
+        // API-dan kelmagan, lekin admin paneldan qo‘shilgan yangi maxsus kitoblarni saqlab qolish
+        const customBooks = savedBooksList.filter(
+          (lb) => !mappedBooks.some((mb) => mb.id === lb.id)
+        );
+
+        const finalBooks = [...mappedBooks, ...customBooks];
+        setBooks(finalBooks);
+        localStorage.setItem('kitobxonlik_books', JSON.stringify(finalBooks));
+        setApiStatus('success');
+        setApiError(null);
+      } else {
+        throw new Error('Fetched data is not an array');
+      }
+    } catch (err) {
+      console.warn('Backend API books fetch failed, using local/default books as fallback:', err);
+      setApiStatus('error');
+      setApiError(err instanceof Error ? err.message : String(err));
+      const savedBooks = localStorage.getItem('kitobxonlik_books');
+      if (savedBooks) {
+        try {
+          setBooks(JSON.parse(savedBooks));
+        } catch (e) {
           setBooks(DEFAULT_BOOKS);
-          localStorage.setItem('kitobxonlik_books', JSON.stringify(DEFAULT_BOOKS));
         }
-      });
+      } else {
+        setBooks(DEFAULT_BOOKS);
+        localStorage.setItem('kitobxonlik_books', JSON.stringify(DEFAULT_BOOKS));
+      }
+    }
+  };
+
+  // Load configuration from local storage on mount, and books from the backend API
+  useEffect(() => {
+    fetchBooks();
 
     // 2. Load other configurations from local storage
     const savedResults = localStorage.getItem('kitobxonlik_results');
@@ -130,10 +130,48 @@ export default function App() {
     localStorage.setItem('kitobxonlik_books', JSON.stringify(newBooks));
   };
 
-  const handleDeleteBook = (id: string) => {
-    const filtered = books.filter(b => b.id !== id);
-    setBooks(filtered);
-    localStorage.setItem('kitobxonlik_books', JSON.stringify(filtered));
+  const handleAddNewBook = async (nom: string) => {
+    try {
+      setApiStatus('loading');
+      const response = await fetch("/api/books-proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ nom })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Xatolik: Server ${response.status} qaytardi`);
+      }
+
+      // Muvaffaqiyatli saqlangach qayta yuklash
+      await fetchBooks();
+    } catch (err: any) {
+      console.error("Kitob qo‘shishda xatolik:", err);
+      alert("Kitob qo‘shishda xatolik yuz berdi: " + (err.message || String(err)));
+      setApiStatus('success');
+    }
+  };
+
+  const handleDeleteBook = async (id: string) => {
+    try {
+      setApiStatus('loading');
+      const response = await fetch(`/api/books-proxy/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error(`Xatolik: Server ${response.status} qaytardi`);
+      }
+
+      // Muvaffaqiyatli o'chgach qayta yuklash
+      await fetchBooks();
+    } catch (err: any) {
+      console.error("Kitobni o‘chirishda xatolik:", err);
+      alert("Kitobni o‘chirishda xatolik yuz berdi: " + (err.message || String(err)));
+      setApiStatus('success');
+    }
   };
 
   // Update central state settings
@@ -207,6 +245,7 @@ export default function App() {
             onUpdateSettings={handleUpdateSettings}
             onClearResults={handleClearResults}
             onDeleteBook={handleDeleteBook}
+            onAddBook={handleAddNewBook}
           />
         </main>
       )}

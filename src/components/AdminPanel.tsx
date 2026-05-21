@@ -31,6 +31,7 @@ interface AdminPanelProps {
   onUpdateSettings: (updatedSettings: QuizSettings) => void;
   onClearResults: () => void;
   onDeleteBook: (id: string) => void;
+  onAddBook: (nom: string) => void;
 }
 
 export default function AdminPanel({ 
@@ -41,7 +42,8 @@ export default function AdminPanel({
   onUpdateBooks, 
   onUpdateSettings,
   onClearResults,
-  onDeleteBook
+  onDeleteBook,
+  onAddBook
 }: AdminPanelProps) {
   // Simple password lock
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
@@ -96,14 +98,7 @@ export default function AdminPanel({
     e.preventDefault();
     if (newBookTitle.trim().length === 0) return;
 
-    const newBook: LiteratureBook = {
-      id: `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      nom: newBookTitle.trim(),
-      savollar: [],
-      yaratilganVaqt: new Date().toISOString()
-    };
-
-    onUpdateBooks([newBook, ...books]);
+    onAddBook(newBookTitle.trim());
     setNewBookTitle('');
     setShowAddBook(false);
   };
