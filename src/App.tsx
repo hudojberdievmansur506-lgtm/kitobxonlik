@@ -10,6 +10,8 @@ const DEFAULT_SETTINGS: QuizSettings = {
   savollarSoni: 30
 };
 
+const API_BASE_URL = "http://172.23.0.118:3001/api";
+
 export default function App() {
   const [books, setBooks] = useState<LiteratureBook[]>([]);
   const [results, setResults] = useState<TestResult[]>([]);
@@ -28,9 +30,9 @@ export default function App() {
       };
 
       const [booksRes, questionsRes, resultsRes] = await Promise.all([
-        fetch("https://king-dork-opulently.ngrok-free.dev/api/books", { headers: headersObj }),
-        fetch("https://king-dork-opulently.ngrok-free.dev/api/questions", { headers: headersObj }),
-        fetch("https://king-dork-opulently.ngrok-free.dev/api/results", { headers: headersObj })
+        fetch(`${API_BASE_URL}/books`, { headers: headersObj }),
+        fetch(`${API_BASE_URL}/questions`, { headers: headersObj }),
+        fetch(`${API_BASE_URL}/results`, { headers: headersObj })
       ]);
 
       if (!booksRes.ok) {
@@ -310,7 +312,7 @@ export default function App() {
   const handleAddNewBook = async (nom: string) => {
     try {
       setApiStatus('loading');
-      const response = await fetch("https://king-dork-opulently.ngrok-free.dev/api/books", {
+      const response = await fetch(`${API_BASE_URL}/books`, {
         method: "POST",
         headers: {
           "ngrok-skip-browser-warning": "true",
@@ -335,7 +337,7 @@ export default function App() {
   const handleDeleteBook = async (id: string) => {
     try {
       setApiStatus('loading');
-      const response = await fetch(`https://king-dork-opulently.ngrok-free.dev/api/books/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/books/${id}`, {
         method: "DELETE",
         headers: {
           "ngrok-skip-browser-warning": "true",
@@ -372,7 +374,7 @@ export default function App() {
           variantlar: q.javoblar
         };
 
-        const response = await fetch("https://king-dork-opulently.ngrok-free.dev/api/questions", {
+        const response = await fetch(`${API_BASE_URL}/questions`, {
           method: "POST",
           headers: headersObj,
           body: JSON.stringify(payload)
@@ -425,7 +427,7 @@ export default function App() {
         book_ids: result.tanlanganKitoblar.join(", ")
       };
 
-      const res = await fetch("https://king-dork-opulently.ngrok-free.dev/api/results", {
+      const res = await fetch(`${API_BASE_URL}/results`, {
         method: "POST",
         headers: headersObj,
         body: JSON.stringify(payload)
@@ -456,7 +458,7 @@ export default function App() {
   const handleClearResults = async () => {
     try {
       setApiStatus('loading');
-      const response = await fetch("https://king-dork-opulently.ngrok-free.dev/api/results", {
+      const response = await fetch(`${API_BASE_URL}/results`, {
         method: "DELETE",
         headers: {
           "ngrok-skip-browser-warning": "true",

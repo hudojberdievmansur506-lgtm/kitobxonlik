@@ -6,6 +6,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  const BACKEND_URL = "http://172.23.0.118:3001/api";
+
   // Setup JSON body parsing middleware
   app.use(express.json());
 
@@ -15,7 +17,7 @@ async function startServer() {
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     try {
-      const targetUrl = "https://king-dork-opulently.ngrok-free.dev/api/books";
+      const targetUrl = `${BACKEND_URL}/books`;
       const response = await fetch(targetUrl, {
         method: "GET",
         signal: controller.signal,
@@ -50,7 +52,7 @@ async function startServer() {
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     try {
-      const targetUrl = "https://king-dork-opulently.ngrok-free.dev/api/books";
+      const targetUrl = `${BACKEND_URL}/books`;
       const response = await fetch(targetUrl, {
         method: "POST",
         signal: controller.signal,
@@ -87,7 +89,7 @@ async function startServer() {
 
     try {
       const { id } = req.params;
-      const targetUrl = `https://king-dork-opulently.ngrok-free.dev/api/books/${id}`;
+      const targetUrl = `${BACKEND_URL}/books/${id}`;
       const response = await fetch(targetUrl, {
         method: "DELETE",
         signal: controller.signal,
@@ -135,7 +137,7 @@ async function startServer() {
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     try {
-      const targetUrl = "https://king-dork-opulently.ngrok-free.dev/api/questions";
+      const targetUrl = `${BACKEND_URL}/questions`;
       const response = await fetch(targetUrl, {
         method: "GET",
         signal: controller.signal,
@@ -171,7 +173,7 @@ async function startServer() {
 
     try {
       const { bookId } = req.params;
-      const targetUrl = `https://king-dork-opulently.ngrok-free.dev/api/books/${bookId}/questions`;
+      const targetUrl = `${BACKEND_URL}/books/${bookId}/questions`;
       const response = await fetch(targetUrl, {
         method: "GET",
         signal: controller.signal,
@@ -206,7 +208,7 @@ async function startServer() {
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     try {
-      const targetUrl = "https://king-dork-opulently.ngrok-free.dev/api/questions";
+      const targetUrl = `${BACKEND_URL}/questions`;
       const response = await fetch(targetUrl, {
         method: "POST",
         signal: controller.signal,
@@ -242,7 +244,7 @@ async function startServer() {
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     try {
-      const targetUrl = "https://king-dork-opulently.ngrok-free.dev/api/results";
+      const targetUrl = `${BACKEND_URL}/results`;
       const response = await fetch(targetUrl, {
         method: "GET",
         signal: controller.signal,
@@ -277,7 +279,7 @@ async function startServer() {
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     try {
-      const targetUrl = "https://king-dork-opulently.ngrok-free.dev/api/results";
+      const targetUrl = `${BACKEND_URL}/results`;
       const response = await fetch(targetUrl, {
         method: "POST",
         signal: controller.signal,

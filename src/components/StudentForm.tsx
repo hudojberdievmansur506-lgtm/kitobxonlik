@@ -146,7 +146,7 @@ export default function StudentForm({ books, apiStatus = 'loading', apiError, on
               </span>
             </div>
             <p className="text-[11px] leading-relaxed text-amber-700">
-              Siz ko‘rsatgan <code className="font-mono bg-amber-100/70 px-1 py-0.5 rounded text-[10px] font-bold">https://king-dork-opulently.ngrok-free.dev/api/books</code> manziliga so‘rov yuborilganda xatolik yuz berdi ({apiError || 'CORS yoki Tarmoq muammosi'}).
+              Siz ko‘rsatgan <code className="font-mono bg-amber-100/70 px-1 py-0.5 rounded text-[10px] font-bold">http://172.23.0.118:3001/api/books</code> manziliga so‘rov yuborilganda xatolik yuz berdi ({apiError || 'CORS yoki Tarmoq muammosi'}).
               Tizim oflayn rejimda barcha default kitoblar ({books.length} ta) bilan faoliyatini davom ettiraveradi.
             </p>
             <div className="pt-1.5 border-t border-amber-200/50 text-[10px] text-amber-600 space-y-1">
